@@ -417,10 +417,7 @@ class SantaBot:
             participant_dictionary = OrderedDict(participant_dictionary)
             print(participant_dictionary)
 
-            combinations = self.find_combinations(group_participants, participant_dictionary, [])
-            print(len(combinations))
-            print(combinations)
-            choice = random.choice(combinations)
+            choice = self.find_combination(participant_dictionary)
             print(choice)
 
             for santa in group_participants_objects:
@@ -436,7 +433,7 @@ class SantaBot:
                 # print("send message to " + str(santa.telegram_id))
                 bot.send_message(chat_id=santa.telegram_id, text=message)
             self.session.commit()
-            message = "Messages have been sent! There were " + str(len(combinations)) + " potential combinations"
+            message = "Messages have been sent!"
             update.message.reply_text(message)
         except Exception as this_ex:
             print(this_ex)
@@ -450,26 +447,26 @@ class SantaBot:
         message = "All pairings have been reset"
         update.message.reply_text(message)
 
-    def find_combinations(self, remaining_participants, participant_dictionary, taken):
-        remaining_participants_copy = deepcopy(remaining_participants)
-        this_participant = remaining_participants_copy.pop(0)
-        these_combinations = []
-        # print("This Participant: " + str(this_participant))
-        for option in participant_dictionary[this_participant]:
-            # print("This Option: " + str(option))
-            if option in taken:
-                # print("Taken")
-                continue
-            if len(remaining_participants_copy) > 0:
-                taken_copy = deepcopy(taken)
-                taken_copy.append(option)
-                child_combinations = self.find_combinations(
-                    remaining_participants_copy, participant_dictionary, taken_copy)
-                # print("Up Level to: " + str(this_participant))
-                if len(child_combinations) > 0:
-                    for new_combination_dictionary in child_combinations:
-                        new_combination_dictionary[this_participant] = option
-                        these_combinations.append(new_combination_dictionary)
-            else:
-                return [{this_participant: option}]
-        return these_combinations
+    @staticmethod
+    def find_combination(participant_dictionary):
+        valid_pairs = [
+            (sender, receiver)
+            for sender, candidates in participant_dictionary.items()
+            for receiver in candidates
+        ]
+
+        combination = {}
+        while len(combination) != len(participant_dictionary):
+            random.shuffle(valid_pairs)
+
+            senders = set()
+            receivers = set()
+            combination = {}
+
+            for sender, receiver in valid_pairs:
+                if sender in senders or receiver in receivers:
+                    continue
+                combination[sender] = receiver
+                senders.add(sender)
+                receivers.add(receiver)
+        return combination
